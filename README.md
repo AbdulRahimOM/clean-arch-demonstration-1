@@ -26,4 +26,8 @@ internal/
 └── interfaces/      # HTTP handlers
 ```
 
-**This as for demonstration purpose -- not error proofed .. made with AI!**
+#### Notes
+* This project is **for Clean Architecture demonstration purposes only**
+* **MongoDB sessions/transactions are intentionally omitted** for simplicity
+* Not production-ready or fully error-hardened
+* Implemented with AI assistance

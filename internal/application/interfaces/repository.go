@@ -23,9 +23,6 @@ type StockHistoryRepository interface {
 
 // Unit of Work pattern for transaction
 type UnitOfWork interface {
-	Begin(ctx context.Context) error
-	Commit(ctx context.Context) error
-	Rollback(ctx context.Context) error
 	Products() ProductRepository
 	Tenants() TenantRepository
 	StockHistory() StockHistoryRepository

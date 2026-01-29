@@ -12,13 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	// "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type mongoUnitOfWork struct {
 	client  *mongo.Client
 	db      *mongo.Database
-	session mongo.Session
 }
 
 func NewMongoUnitOfWork(client *mongo.Client, dbName string) interfaces.UnitOfWork {
@@ -28,80 +27,31 @@ func NewMongoUnitOfWork(client *mongo.Client, dbName string) interfaces.UnitOfWo
 	}
 }
 
-func (uow *mongoUnitOfWork) Begin(ctx context.Context) error {
-	session, err := uow.client.StartSession()
-	if err != nil {
-		return err
-	}
-
-	if err := session.StartTransaction(); err != nil {
-		session.EndSession(ctx)
-		return err
-	}
-
-	uow.session = session
-	return nil
-}
-
-func (uow *mongoUnitOfWork) Commit(ctx context.Context) error {
-	if uow.session == nil {
-		return nil
-	}
-
-	if err := uow.session.CommitTransaction(ctx); err != nil {
-		return err
-	}
-
-	uow.session.EndSession(ctx)
-	uow.session = nil
-	return nil
-}
-
-func (uow *mongoUnitOfWork) Rollback(ctx context.Context) error {
-	if uow.session == nil {
-		return nil
-	}
-
-	if err := uow.session.AbortTransaction(ctx); err != nil {
-		return err
-	}
-
-	uow.session.EndSession(ctx)
-	uow.session = nil
-	return nil
-}
-
 func (uow *mongoUnitOfWork) Products() interfaces.ProductRepository {
 	return &mongoProductRepository{
 		collection: uow.db.Collection("products"),
-		session:    uow.session,
 	}
 }
 
 func (uow *mongoUnitOfWork) Tenants() interfaces.TenantRepository {
 	return &mongoTenantRepository{
 		collection: uow.db.Collection("tenants"),
-		session:    uow.session,
 	}
 }
 
 func (uow *mongoUnitOfWork) StockHistory() interfaces.StockHistoryRepository {
 	return &mongoStockHistoryRepository{
 		collection: uow.db.Collection("stock_history"),
-		session:    uow.session,
 	}
 }
 
 // Product Repository Implementation
 type mongoProductRepository struct {
 	collection *mongo.Collection
-	session    mongo.Session
+	// session    mongo.Session
 }
 
 func (r *mongoProductRepository) FindByID(ctx context.Context, productID string) (*domain.Product, error) {
-	if r.session != nil {
-		ctx = mongo.NewSessionContext(ctx, r.session)
-	}
 
 	objID, err := primitive.ObjectIDFromHex(productID)
 	if err != nil {
@@ -116,7 +66,7 @@ func (r *mongoProductRepository) FindByID(ctx context.Context, productID string)
 		TenantID     string             `bson:"tenant_id"`
 	}
 
-	err = r.collection.FindOne(ctx, bson.M{"_id": objID}, options.FindOne()).Decode(&result)
+	err = r.collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, domain.ErrProductNotFound
@@ -135,9 +85,6 @@ func (r *mongoProductRepository) FindByID(ctx context.Context, productID string)
 }
 
 func (r *mongoProductRepository) Save(ctx context.Context, product *domain.Product) error {
-	if r.session != nil {
-		ctx = mongo.NewSessionContext(ctx, r.session)
-	}
 
 	objID, _ := primitive.ObjectIDFromHex(product.ID)
 
@@ -155,16 +102,12 @@ func (r *mongoProductRepository) Save(ctx context.Context, product *domain.Produ
 		ctx,
 		bson.M{"_id": objID},
 		update,
-		options.Update(),
 	)
 
 	return err
 }
 
 func (r *mongoProductRepository) UpdateStock(ctx context.Context, productID string, newStock domain.StockQuantity) error {
-	if r.session != nil {
-		ctx = mongo.NewSessionContext(ctx, r.session)
-	}
 
 	// Alternative implementation
 	objID, _ := primitive.ObjectIDFromHex(productID)
@@ -176,11 +119,7 @@ func (r *mongoProductRepository) UpdateStock(ctx context.Context, productID stri
 		},
 	}
 
-	_, err := r.collection.UpdateOne(
-		ctx,
-		bson.M{"_id": objID},
-		update,
-	)
+	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": objID}, update)
 
 	return err
 }
@@ -188,13 +127,9 @@ func (r *mongoProductRepository) UpdateStock(ctx context.Context, productID stri
 // Tenant Repository Implementation
 type mongoTenantRepository struct {
 	collection *mongo.Collection
-	session    mongo.Session
 }
 
 func (r *mongoTenantRepository) FindByID(ctx context.Context, tenantID string) (*domain.Tenant, error) {
-	if r.session != nil {
-		ctx = mongo.NewSessionContext(ctx, r.session)
-	}
 
 	var result struct {
 		ID       string `bson:"_id"`
@@ -203,7 +138,7 @@ func (r *mongoTenantRepository) FindByID(ctx context.Context, tenantID string) (
 		IsActive bool   `bson:"is_active"`
 	}
 
-	err := r.collection.FindOne(ctx, bson.M{"_id": tenantID}, options.FindOne()).Decode(&result)
+	err := r.collection.FindOne(ctx, bson.M{"_id": tenantID}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, domain.ErrTenantNotFound
@@ -223,13 +158,9 @@ func (r *mongoTenantRepository) FindByID(ctx context.Context, tenantID string) (
 // Stock History Repository Implementation
 type mongoStockHistoryRepository struct {
 	collection *mongo.Collection
-	session    mongo.Session
 }
 
 func (r *mongoStockHistoryRepository) Create(ctx context.Context, event domain.StockAddedEvent) error {
-	if r.session != nil {
-		ctx = mongo.NewSessionContext(ctx, r.session)
-	}
 
 	productID, _ := primitive.ObjectIDFromHex(event.ProductID)
 
@@ -245,6 +176,6 @@ func (r *mongoStockHistoryRepository) Create(ctx context.Context, event domain.S
 		"operation":      "stock_add",
 	}
 
-	_, err := r.collection.InsertOne(ctx, document, options.InsertOne())
+	_, err := r.collection.InsertOne(ctx, document)
 	return err
 }

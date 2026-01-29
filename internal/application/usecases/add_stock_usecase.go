@@ -60,12 +60,6 @@ func (uc *addStockUseCase) Execute(ctx context.Context, req AddStockRequest) (*A
 		return nil, err
 	}
 
-	// 2. Begin transaction
-	if err := uc.uow.Begin(ctx); err != nil {
-		return nil, err
-	}
-	defer uc.uow.Rollback(ctx) // Safe rollback if not committed
-
 	// 3. Get tenant
 	tenant, err := uc.uow.Tenants().FindByID(ctx, req.TenantID)
 	if err != nil {
@@ -153,11 +147,6 @@ func (uc *addStockUseCase) Execute(ctx context.Context, req AddStockRequest) (*A
 	// 13. Publish domain event
 	if uc.eventPublisher != nil {
 		_ = uc.eventPublisher.Publish(ctx, stockEvent)
-	}
-
-	// 14. Commit transaction
-	if err := uc.uow.Commit(ctx); err != nil {
-		return nil, err
 	}
 
 	// 15. Return response

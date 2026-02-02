@@ -23,7 +23,7 @@ internal/
 ├── domain/          # Pure business models
 ├── application/     # Use cases & interfaces
 ├── infrastructure/  # MongoDB, notifications
-└── interfaces/      # HTTP handlers
+└── api/             # HTTP handlers
 ```
 
 #### Notes

@@ -5,14 +5,15 @@ import (
 	"log"
 	"time"
 
+	"myapp/internal/api/http"
+	"myapp/internal/application/usecases"
+	"myapp/internal/infrastructure/persistence"
+	"myapp/internal/infrastructure/services"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"myapp/internal/application/usecases"
-	"myapp/internal/infrastructure/persistence"
-	"myapp/internal/infrastructure/services"
-	"myapp/internal/interfaces/http"
 )
 
 func main() {
@@ -70,6 +71,6 @@ func connectMongoDB() *mongo.Client {
 func authMiddleware(c *fiber.Ctx) error {
 	// Simple auth middleware
 	// In real app, validate JWT, etc.
-	c.Locals("user_id", "user_123")
+	c.Locals("user_id", "user_123") //temporary hardcoded user id for demonstration purposes
 	return c.Next()
 }

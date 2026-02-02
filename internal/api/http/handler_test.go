@@ -12,7 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"myapp/internal/application/usecases"
 	"myapp/internal/domain"
-	httphandler "myapp/internal/interfaces/http"
+	httphandler "myapp/internal/api/http"
 	"myapp/internal/testutil/httputil"
 )
 
